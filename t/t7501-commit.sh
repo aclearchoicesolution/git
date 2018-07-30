@@ -99,12 +99,12 @@ test_expect_success '--dry-run with stuff to commit returns ok' '
 	git commit -m next -a --dry-run
 '
 
-test_expect_failure '--short with stuff to commit returns ok' '
+test_expect_success '--short with stuff to commit returns ok' '
 	echo bongo bongo bongo >>file &&
 	git commit -m next -a --short
 '
 
-test_expect_failure '--porcelain with stuff to commit returns ok' '
+test_expect_success '--porcelain with stuff to commit returns ok' '
 	echo bongo bongo bongo >>file &&
 	git commit -m next -a --porcelain
 '
@@ -664,24 +664,142 @@ test_expect_success '--only works on to-be-born branch' '
 	test_cmp expected actual
 '
 
-test_expect_success '--dry-run with conflicts fixed from a merge' '
-	# setup two branches with conflicting information
-	# in the same file, resolve the conflict,
-	# call commit with --dry-run
-	echo "Initial contents, unimportant" >test-file &&
-	git add test-file &&
+test_expect_success 'prepare commits that can be used to trigger a merge conflict' '
+	# setup two branches with conflicting contents in two paths
+	echo "Initial contents, unimportant" | tee test-file1 test-file2 &&
+	git add test-file1 test-file2 &&
 	git commit -m "Initial commit" &&
-	echo "commit-1-state" >test-file &&
-	git commit -m "commit 1" -i test-file &&
+	echo "commit-1-state" | tee test-file1 test-file2 &&
+	git commit -m "commit 1" -i test-file1 test-file2 &&
 	git tag commit-1 &&
 	git checkout -b branch-2 HEAD^1 &&
-	echo "commit-2-state" >test-file &&
-	git commit -m "commit 2" -i test-file &&
-	! $(git merge --no-commit commit-1) &&
-	echo "commit-2-state" >test-file &&
-	git add test-file &&
+	echo "commit-2-state" | tee test-file1 test-file2 &&
+	git commit -m "commit 2" -i test-file1 test-file2 &&
+	git tag commit-2
+'
+
+test_expect_success '--dry-run with only unresolved merge conflicts' '
+	git reset --hard commit-2 &&
+	test_must_fail git merge --no-commit commit-1 &&
+	test_must_fail git commit --dry-run &&
+	git rev-parse commit-2 >expected &&
+	git rev-parse HEAD >actual &&
+	test_cmp expected actual
+'
+
+test_expect_success '--short with only unresolved merge conflicts' '
+	git reset --hard commit-2 &&
+	test_must_fail git merge --no-commit commit-1 &&
+	test_must_fail git commit --short &&
+	git rev-parse commit-2 >expected &&
+	git rev-parse HEAD >actual &&
+	test_cmp expected actual
+'
+
+test_expect_success '--porcelain with only unresolved merge conflicts' '
+	git reset --hard commit-2 &&
+	test_must_fail git merge --no-commit commit-1 &&
+	test_must_fail git commit --porcelain &&
+	git rev-parse commit-2 >expected &&
+	git rev-parse HEAD >actual &&
+	test_cmp expected actual
+'
+
+test_expect_success '--long with only unresolved merge conflicts' '
+	git reset --hard commit-2 &&
+	test_must_fail git merge --no-commit commit-1 &&
+	test_must_fail git commit --long &&
+	git rev-parse commit-2 >expected &&
+	git rev-parse HEAD >actual &&
+	test_cmp expected actual
+'
+
+test_expect_success '--dry-run with resolved and unresolved merge conflicts' '
+	git reset --hard commit-2 &&
+	test_must_fail git merge --no-commit commit-1 &&
+	echo "resolve one merge conflict" >test-file1 &&
+	git add test-file1 &&
+	test_must_fail git commit --dry-run &&
+	git rev-parse commit-2 >expected &&
+	git rev-parse HEAD >actual &&
+	test_cmp expected actual
+'
+
+test_expect_success '--short with resolved and unresolved merge conflicts' '
+	git reset --hard commit-2 &&
+	test_must_fail git merge --no-commit commit-1 &&
+	echo "resolve one merge conflict" >test-file1 &&
+	git add test-file1 &&
+	test_must_fail git commit --short &&
+	git rev-parse commit-2 >expected &&
+	git rev-parse HEAD >actual &&
+	test_cmp expected actual
+'
+
+test_expect_success '--porcelain with resolved and unresolved merge conflicts' '
+	git reset --hard commit-2 &&
+	test_must_fail git merge --no-commit commit-1 &&
+	echo "resolve one merge conflict" >test-file1 &&
+	git add test-file1 &&
+	test_must_fail git commit --porcelain &&
+	git rev-parse commit-2 >expected &&
+	git rev-parse HEAD >actual &&
+	test_cmp expected actual
+'
+
+test_expect_success '--long with resolved and unresolved merge conflicts' '
+	git reset --hard commit-2 &&
+	test_must_fail git merge --no-commit commit-1 &&
+	echo "resolve one merge conflict" >test-file1 &&
+	git add test-file1 &&
+	test_must_fail git commit --long &&
+	git rev-parse commit-2 >expected &&
+	git rev-parse HEAD >actual &&
+	test_cmp expected actual
+'
+
+test_expect_success '--dry-run with only resolved merge conflicts' '
+	git reset --hard commit-2 &&
+	test_must_fail git merge --no-commit commit-1 &&
+	echo "resolve all merge conflicts" | tee test-file1 test-file2 &&
+	git add test-file1 test-file2 &&
 	git commit --dry-run &&
-	git commit -m "conflicts fixed from merge."
+	git rev-parse commit-2 >expected &&
+	git rev-parse HEAD >actual &&
+	test_cmp expected actual
+'
+
+test_expect_success '--short with only resolved merge conflicts' '
+	git reset --hard commit-2 &&
+	test_must_fail git merge --no-commit commit-1 &&
+	echo "resolve all merge conflicts" | tee test-file1 test-file2 &&
+	git add test-file1 test-file2 &&
+	git commit --short &&
+	git rev-parse commit-2 >expected &&
+	git rev-parse HEAD >actual &&
+	test_cmp expected actual
+'
+
+test_expect_success '--porcelain with only resolved merge conflicts' '
+	git reset --hard commit-2 &&
+	test_must_fail git merge --no-commit commit-1 &&
+	echo "resolve all merge conflicts" | tee test-file1 test-file2 &&
+	git add test-file1 test-file2 &&
+	git commit --porcelain &&
+	git rev-parse commit-2 >expected &&
+	git rev-parse HEAD >actual &&
+	test_cmp expected actual
+'
+
+test_expect_success '--long with only resolved merge conflicts' '
+	git reset --hard commit-2 &&
+	test_must_fail git merge --no-commit commit-1 &&
+	echo "resolve all merge conflicts" | tee test-file1 test-file2 &&
+	git add test-file1 test-file2 &&
+	git commit --long &&
+	git rev-parse commit-2 >expected &&
+	git rev-parse HEAD >actual &&
+	test_cmp expected actual
 '
 
 test_done
