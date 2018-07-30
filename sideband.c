@@ -9,10 +9,20 @@
  * Optionally highlight some keywords in remote output if they appear at the
  * start of the line.
  */
-void maybe_colorize_sideband(struct strbuf *dest, const char *src, int n)
+static void maybe_colorize_sideband(struct strbuf *dest, const char *src, int n)
 {
 	static int sideband_use_color = -1;
 	int i;
+	struct kwtable {
+		const char *keyword;
+		const char *color;
+	} keywords[] = {
+		{"hint", GIT_COLOR_YELLOW},
+		{"warning", GIT_COLOR_BOLD_YELLOW},
+		{"success", GIT_COLOR_BOLD_GREEN},
+		{"error", GIT_COLOR_BOLD_RED},
+	};
+
 	if (sideband_use_color < 0) {
 		const char *key = "color.remote";
 		char *value = NULL;
@@ -24,16 +34,6 @@ void maybe_colorize_sideband(struct strbuf *dest, const char *src, int n)
 		strbuf_add(dest, src, n);
 		return;
 	}
-
-	struct kwtable {
-		const char *keyword;
-		const char *color;
-	} keywords[] = {
-		{"hint", GIT_COLOR_YELLOW},
-		{"warning", GIT_COLOR_BOLD_YELLOW},
-		{"success", GIT_COLOR_BOLD_GREEN},
-		{"error", GIT_COLOR_BOLD_RED},
-	};
 
 	while (isspace(*src)) {
 		strbuf_addch(dest, *src);
